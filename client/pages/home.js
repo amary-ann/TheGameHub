@@ -6,12 +6,12 @@ import SloganSection from "../Components/SloganSection";
 
 const Home = (props) => {
     return (
-        <div >
+        <main >
             <HomeHeadingSection />
             <SloganSection />
             <HomeGameImage />
             <CheckGamesButton />
-        </div>
+        </main>
     );
 }
 export default Home;
