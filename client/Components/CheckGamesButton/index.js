@@ -1,0 +1,15 @@
+import Link from 'next/link';
+
+const CheckGamesButton = (props) => {
+    return (
+        <div className='flex justify-center mt-[80px] mb-[125px]'>
+            <Link href='/games'>
+                <button className='px-[49px] py-[16px] bg-[#4041D5] rounded-[12px] poppinsFont font-semibold text-[20px] text-white'>
+                    Check out our games 
+                </button>
+            </Link>
+        </div>
+    )
+}
+
+export default CheckGamesButton;
