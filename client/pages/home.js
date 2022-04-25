@@ -1,9 +1,10 @@
-import NavButton from "../Components/NavButton";
+import HomeHeadingSection from "../Components/HomeHeadingSection";
+
 
 const Home = (props) => {
     return (
         <div >
-            <NavButton />
+            <HomeHeadingSection />
         </div>
     );
 }
