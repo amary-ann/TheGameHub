@@ -4,6 +4,8 @@ const {
   sessionMiddleware,
   wrap,
 } = require("./Controllers/serverController");
+const { requireAuth } = require("./Controllers/socketController");
+const { startDB } = require("./DB/index");
 const express = require("express");
 const cors = require("cors");
 const UserRouter = require("./Routes/UserRoutes");
@@ -18,26 +20,25 @@ const port = process.env.PORT || 8080; // use port 8080 if environment port is n
 
 // Middlewares
 // Express middlewares
+app.use(express.json());
 app.use(cors(corsConfig));
 app.use(sessionMiddleware);
 app.use("/users", UserRouter);
 
 // Socket.io middlewares
 io.use(wrap(sessionMiddleware));
-io.use((socket, next) => {
-  const session = socket.request.session;
-  if (session && session.authenticated) {
-    console.log("successfully connected");
-  }
-  next();
-});
+io.use(requireAuth);
 
 io.on("connection", (socket) => {
   socket.emit("Welcome", "You're welcome");
   console.log("hello");
 });
 
-// initialise server
-server.listen(port, () => {
-  console.log(`Listening on port ${port}...`);
+// connect to db then start server
+
+startDB(() => {
+  server.listen(port, () => {
+    console.log(`Listening on port ${port}...`);
+  });
+  console.log("sucessfully connected to db");
 });
