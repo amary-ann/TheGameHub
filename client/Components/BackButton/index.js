@@ -7,7 +7,7 @@ const BackButton = (props) => {
         router.back();
     }
     return (
-        <button onClick={onBackButtonClick}>
+        <button onClick={onBackButtonClick} className="mb-[50px]">
             <Image src='/backButton.svg' width={45} height={29} />
         </button>
     )

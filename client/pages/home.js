@@ -6,7 +6,7 @@ import SloganSection from "../Components/SloganSection";
 
 const Home = (props) => {
     return (
-        <main >
+        <main className="container mx-auto">
             <HomeHeadingSection />
             <SloganSection />
             <HomeGameImage />
