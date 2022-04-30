@@ -129,5 +129,5 @@ dmypy.json
 .pyre/
 
 # server stuff
-/server/node_modules
-/server/.env
+/server/Node Server/node_modules
+/server/Node Server/.env

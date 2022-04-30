@@ -42,6 +42,7 @@ const get_verifyUsername = (req, res) => {
   console.log(username);
   res.end();
 };
+
 module.exports = { post_LoginUser, post_CreateUser };
 
 const errorHandler = (error) => {
