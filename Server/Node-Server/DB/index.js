@@ -1,10 +1,10 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 
-const startDB = (callback) => {
+const startDB = async (callback) => {
   try {
-    const connection = await mongoose.connect(process.env.DBURI)
-    if(connection){
+    const connection = await mongoose.connect(process.env.DBURI);
+    if (connection) {
       callback();
     }
   } catch (err) {

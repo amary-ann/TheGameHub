@@ -1,6 +1,7 @@
 require("dotenv").config();
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
+const jwt = require("jsonwebtoken");
 const maxAge = 1000 * 60 * 60 * 24; // a day in milliseconds
 
 const sessionMiddleware = session({
