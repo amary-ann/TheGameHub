@@ -1,6 +1,14 @@
 import BackButton from "../../Components/BackButton";
 import Head from 'next/head';
 import {useRouter} from 'next/router';
+import ChooseOpponentCard from "../../Components/ChooseOpponentCard";
+
+const opponentData = [
+    {
+        iconPath : '/ai.svg', 
+        text: "Play against AI"
+    }
+]
 
 const ChooseOpponent = (props) => {
     const router = useRouter();
@@ -28,7 +36,7 @@ const ChooseOpponent = (props) => {
             <BackButton />
             <h1 className="text-[26px] font-semibold poppinsFont">Choose your opponent</h1>
             <div className="">
-
+            {opponentData.map(item => <ChooseOpponentCard iconPath={item.iconPath} text={item.text}/>)}
             </div>
         </main>
     );
