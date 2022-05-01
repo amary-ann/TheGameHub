@@ -12,7 +12,7 @@ export default function Home() {
       </Head>
 
       <main className='h-screen flex items-center justify-center'>
-        <Image src="/playIcon.svg" width={200} height={200} />
+        <Image src="/gameHubPlayIcon.svg" width={200} height={200} />
       </main>
     </div>
   )
