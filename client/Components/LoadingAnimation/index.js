@@ -1,8 +1,17 @@
 import Head from 'next/head';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 
 const LoadingAnimation = (props) => {
+    const router = useRouter();
+
+    useEffect(() => {
+  
+      setTimeout(() => router.push('/home'), 2200);
+  
+    }, [])
     return (
         <div className='relative'>
             <Head>
