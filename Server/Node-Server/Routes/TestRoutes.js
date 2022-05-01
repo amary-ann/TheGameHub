@@ -1,6 +1,6 @@
 const { Router } = require("express");
 const router = Router();
-const { testJwt } = require("../Controllers/UserController");
+const { testJwt } = require("../Controllers/TestController");
 
 router.post("/jwt", testJwt);
 
