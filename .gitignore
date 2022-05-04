@@ -131,3 +131,4 @@ dmypy.json
 # node server stuff
 /server/Node-Server/node_modules
 /server/Node-Server/.env
+/dump.rdb
