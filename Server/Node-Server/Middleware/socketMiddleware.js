@@ -1,6 +1,7 @@
 require("dotenv").config();
 const cookieParser = require("cookie");
 const jwt = require("jsonwebtoken");
+const { FindSession, CreateSession } = require("../socketSession");
 
 const requireAuth = (socket, next) => {
   if (socket.cookies && socket.cookies.token) {
@@ -28,4 +29,24 @@ const SocketCookieParser = (socket, next) => {
   next();
 };
 
-module.exports = { requireAuth, SocketCookieParser };
+const SocketSession = async (socket, next) => {
+  try {
+    // check for existing session and create one if none
+    const session = await FindSession(socket.userid);
+    if (session) {
+      socket.session = session;
+      next();
+    } else if (socket.userid) {
+      const newSession = await CreateSession(socket.userid);
+      if (newSession) {
+        socket.session = newSession;
+        socket.session.userid = socket.userid;
+      }
+    } else {
+      console.log("some exception");
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+module.exports = { requireAuth, SocketCookieParser, SocketSession };

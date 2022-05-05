@@ -3,6 +3,7 @@ const { corsConfig } = require("./Controllers/serverController");
 const {
   requireAuth,
   SocketCookieParser,
+  SocketSession,
 } = require("./Middleware/socketMiddleware");
 
 const express = require("express");
@@ -31,6 +32,7 @@ app.use("/test", TestRouter);
 const tictactoeNamespace = io.of("/tictactoe");
 tictactoeNamespace.use(SocketCookieParser);
 tictactoeNamespace.use(requireAuth);
+tictactoeNamespace.use(SocketSession);
 io.use(SocketCookieParser);
 io.use(requireAuth);
 
