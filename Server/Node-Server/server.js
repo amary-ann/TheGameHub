@@ -3,11 +3,12 @@ const { corsConfig } = require("./Controllers/serverController");
 const {
   requireAuth,
   SocketCookieParser,
-} = require("./Controllers/socketController");
+} = require("./Middleware/socketMiddleware");
 
 const express = require("express");
 const { redisClient, startRedis } = require("./redis/index");
 const cors = require("cors");
+const uniqid = require("uniqid");
 const TestRouter = require("./Routes/TestRoutes");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
@@ -48,7 +49,12 @@ tictactoeNamespace.on("connection", async (socket) => {
 
     if (user) {
       // emit found user
+      const gameRoom = uniqid("gameroom");
+
       await redisClient.sRem("waitingPlayers:tictactoe", user);
+
+      tictactoeNamespace.in(user).socketsJoin(gameRoom);
+      tictactoeNamespace.in(socket.userid).socketsJoin(gameRoom);
       socket.emit("found user", user);
       socket.to(user).emit("found user", socket.userid);
     } else {
@@ -99,6 +105,5 @@ io.on("connection", (socket) => {
 // start server
 server.listen(port, async () => {
   await startRedis();
-  await redisClient.set("hope", "hocks");
   console.log(`Listening on port ${port}...`);
 });
