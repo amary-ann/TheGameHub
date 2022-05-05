@@ -6,13 +6,11 @@ const {
 } = require("./Controllers/socketController");
 
 const express = require("express");
-const redis = require("redis");
+const { redisClient, startRedis } = require("./redis/index");
 const cors = require("cors");
 const TestRouter = require("./Routes/TestRoutes");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
-
-const redisClient = redis.createClient();
 
 const app = express();
 const server = createServer(app, { cors: corsConfig });
@@ -100,6 +98,7 @@ io.on("connection", (socket) => {
 
 // start server
 server.listen(port, async () => {
-  await redisClient.connect();
+  await startRedis();
+  await redisClient.set("hope", "hocks");
   console.log(`Listening on port ${port}...`);
 });
