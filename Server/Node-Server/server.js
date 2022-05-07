@@ -1,16 +1,16 @@
 require("dotenv").config();
 const { corsConfig } = require("./Controllers/serverController");
+const TestRouter = require("./Routes/TestRoutes");
 const {
   requireAuth,
   SocketCookieParser,
   SocketSession,
 } = require("./Middleware/socketMiddleware");
-
+const { InitSocket } = require("./Controllers/socketController");
 const express = require("express");
 const { redisClient, startRedis } = require("./redis/index");
-const cors = require("cors");
+
 const uniqid = require("uniqid");
-const TestRouter = require("./Routes/TestRoutes");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 
@@ -24,12 +24,11 @@ const port = process.env.PORT || 8080; // use port 8080 if environment port is n
 
 // Express middlewares
 app.use(express.json());
-app.use(cors(corsConfig));
-//app.use(sessionMiddleware);
 app.use("/test", TestRouter);
 
 // Socket.io middlewares
 const tictactoeNamespace = io.of("/tictactoe");
+// find a way to target all namespaces
 tictactoeNamespace.use(SocketCookieParser);
 tictactoeNamespace.use(requireAuth);
 tictactoeNamespace.use(SocketSession);
@@ -37,28 +36,26 @@ io.use(SocketCookieParser);
 io.use(requireAuth);
 
 tictactoeNamespace.on("connection", async (socket) => {
-  console.log("socket connnected", socket.userid);
-  await redisClient.sAdd("onlinePlayers", socket.userid);
+  InitSocket(socket);
 
-  socket.join(socket.userid);
-  socket.emit("Welcome", "You're welcome to the tictactoe socket");
-
-  socket.on("play with random user", async (data) => {
+  socket.on("play:random-user", async (data) => {
     // check waiting queue for waiting users
     // pair user with another waiting user
 
     const user = await redisClient.sRandMember("waitingPlayers:tictactoe");
 
     if (user) {
-      // emit found user
+      // create and add players to gameroom
       const gameRoom = uniqid("gameroom");
 
       await redisClient.sRem("waitingPlayers:tictactoe", user);
 
       tictactoeNamespace.in(user).socketsJoin(gameRoom);
       tictactoeNamespace.in(socket.userid).socketsJoin(gameRoom);
-      socket.emit("found user", user);
-      socket.to(user).emit("found user", socket.userid);
+
+      // the second argument is "isStartingPlayer", this is only sent for turn based games
+      tictactoeNamespace.to(socket.userid).emit("found-user", user, true);
+      socket.to(user).emit("found-user", socket.userid, false);
     } else {
       // user for
       await redisClient.sAdd("waitingPlayers:tictactoe", socket.userid);
@@ -68,7 +65,7 @@ tictactoeNamespace.on("connection", async (socket) => {
     console.log(data);
   });
 
-  socket.on("play with friend", async (data) => {
+  socket.on("play:friend", async (data) => {
     // create a room and add this user to it
     // emit a request event in the users username
     // const roomid = some random room id
@@ -78,12 +75,13 @@ tictactoeNamespace.on("connection", async (socket) => {
     socket.emit("done", "done");
   });
 
-  socket.on("next player", (data) => {
+  socket.on("next-player", (data) => {
     // emits an event to the other player
     socket.to(socket.userid).to(data.roomid).emit("turn", { changes: "" });
+    socket.session.room = "something";
   });
 
-  socket.on("game over", (data) => {
+  socket.on("gameOver", (data) => {
     // ends the game
     // the game is ended if a user wins or they draw
   });
