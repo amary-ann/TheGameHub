@@ -1,5 +1,6 @@
 require("dotenv").config();
 const { corsConfig } = require("./Controllers/serverController");
+const cors = require("cors");
 const TestRouter = require("./Routes/TestRoutes");
 const {
   requireAuth,
@@ -24,6 +25,7 @@ const port = process.env.PORT || 8080; // use port 8080 if environment port is n
 
 // Express middlewares
 app.use(express.json());
+app.use(cors(corsConfig));
 app.use("/test", TestRouter);
 
 // Socket.io middlewares
@@ -77,8 +79,9 @@ tictactoeNamespace.on("connection", async (socket) => {
 
   socket.on("next-player", (data) => {
     // emits an event to the other player
-    socket.to(socket.userid).to(data.roomid).emit("turn", { changes: "" });
-    socket.session.room = "something";
+    console.log(data);
+    // socket.to(socket.userid).to(data.roomid).emit("turn", { changes: "" });
+    // socket.session.room = "something";
   });
 
   socket.on("gameOver", (data) => {

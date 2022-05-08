@@ -1,6 +1,4 @@
 const { redisClient } = require("./redis/index");
-// define proxy handler
-// updates the session in the redis store everytime the object is modified
 
 /**
  *
@@ -10,23 +8,8 @@ const { redisClient } = require("./redis/index");
  */
 const CreateSession = async (userid) => {
   try {
-    const handler = {
-      async set(target, prop, value) {
-        // prevent userid mutation
-        if (prop === "userid") {
-          throw new Error("userid cannot be changed once initialised");
-        }
-
-        // default property set operation
-        target[prop] = value;
-
-        // update the redis session store
-        await redisClient.set(userid, JSON.stringify(target));
-        return true;
-      },
-    };
     // proxy allows for operations between get and set calls
-    const proxy = new Proxy({ userid }, handler);
+    const proxy = createProxy({ userid }, userid);
 
     // store the session in the redis store
     const session = await redisClient.set(userid, JSON.stringify(proxy));
@@ -43,28 +26,44 @@ const CreateSession = async (userid) => {
  * @returns returns the user session if it exists and null if otherwise
  */
 const FindSession = async (userid) => {
+  // search session store for this session
   const session = await redisClient.get(userid.toString());
+
   if (session) {
-    const handler = {
-      async set(target, prop, value) {
-        // prevent userid mutation
-        if (prop === "userid") {
-          throw new Error("userid cannot be changed once initialised");
-        }
-
-        // default property set operation
-        target[prop] = value;
-
-        // update the redis session store
-        await redisClient.set(userid, JSON.stringify(target));
-        return true;
-      },
-    };
+    // parse the session from json, create and return a proxy to the parsed session
     const parsedSession = JSON.parse(session);
-    const proxySession = new Proxy(parsedSession, handler);
+    const proxySession = createProxy(parsedSession, userid);
     return proxySession;
   }
+
   return null;
 };
 
+/**
+ *
+ * @param {Object} object
+ * @param {String} userid
+ * @returns proxy for the target object
+ */
+const createProxy = (object, userid) => {
+  // The handler defines what happens when operations are
+  // carried out on the target object i.e operations like get,set,delete
+  const handler = {
+    // updates the session in the redis store everytime the object is modified
+    async set(target, prop, value) {
+      // prevent userid mutation
+      if (prop === "userid") {
+        throw new Error("userid cannot be changed once initialised");
+      }
+
+      // set property on the target object
+      target[prop] = value;
+
+      // update the redis session store
+      await redisClient.set(userid, JSON.stringify(target));
+      return true;
+    },
+  };
+  return new Proxy(object, handler);
+};
 module.exports = { CreateSession, FindSession };
