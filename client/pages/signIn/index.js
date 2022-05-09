@@ -3,6 +3,7 @@ import { useState } from 'react';
 import FormGroup from '../../Components/FormGroup';
 import OrRibbon from '../../Components/OrRibbon';
 import AutomaticSignUpButton from '../../Components/AutomaticSignUpButton';
+import { motion } from 'framer-motion';
 
 const SignIn = (props) => {
     const [emailOrUsername, setEmailOrUsername] = useState('');
@@ -11,7 +12,7 @@ const SignIn = (props) => {
         e.preventDefault();
     }
     return (
-        <div className="max-w-[440px] mx-auto">
+        <motion.div initial={{opacity: 0, y: 20}} animate={{opacity: 1, y: 0, transition: {duration: 0.4}}} className="max-w-[440px] mx-auto">
             <div className='flex items-center justify-center'>
                 <Image src='/rocket.png' width={388} height={343} />
             </div>
@@ -27,7 +28,7 @@ const SignIn = (props) => {
                     <AutomaticSignUpButton iconPath={'/appleIcon.svg'} width={48} height={48} />
                 </div>
             </form>
-        </div>
+        </motion.div>
     );
 }
 
