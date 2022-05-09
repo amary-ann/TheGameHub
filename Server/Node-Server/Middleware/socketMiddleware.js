@@ -55,7 +55,8 @@ const SocketSession = async (socket, next) => {
       next(error);
       console.log(error);
     }
+  } else {
+    next(new Error("You need to be logged in"));
   }
-  next(new Error("You need to be logged in"));
 };
 module.exports = { requireAuth, SocketCookieParser, SocketSession };

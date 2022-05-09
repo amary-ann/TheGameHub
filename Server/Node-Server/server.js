@@ -29,52 +29,56 @@ app.use(cors(corsConfig));
 app.use("/test", TestRouter);
 
 // Socket.io middlewares
-const tictactoeNamespace = io.of("/tictactoe");
+const tictactoe = io.of("/tictactoe");
 // find a way to target all namespaces
-tictactoeNamespace.use(SocketCookieParser);
-tictactoeNamespace.use(requireAuth);
-tictactoeNamespace.use(SocketSession);
+tictactoe.use(SocketCookieParser);
+tictactoe.use(requireAuth);
+tictactoe.use(SocketSession);
 io.use(SocketCookieParser);
 io.use(requireAuth);
 
-tictactoeNamespace.on("connection", async (socket) => {
+tictactoe.on("connection", async (socket) => {
   InitSocket(socket);
 
   socket.on("play:random-user", async (data) => {
-    // check waiting queue for waiting users
-    // pair user with another waiting user
+    // get all users in lobby
+    const playersInLobby = await tictactoe.in("lobby").fetchSockets();
 
-    const user = await redisClient.sRandMember("waitingPlayers:tictactoe");
-
-    if (user) {
-      // create and add players to gameroom
+    // check if there are users in lobby
+    if (playersInLobby.length > 0 && !playersInLobby.includes(socket)) {
       const gameRoom = uniqid("gameroom");
+      const player = playersInLobby[0]; // first player in lobby
 
-      await redisClient.sRem("waitingPlayers:tictactoe", user);
+      // remove found player from lobby
+      player.leave("lobby");
 
-      tictactoeNamespace.in(user).socketsJoin(gameRoom);
-      tictactoeNamespace.in(socket.userid).socketsJoin(gameRoom);
+      // add players to a new game room
+      socket.join(gameRoom);
+      player.join(gameRoom);
 
-      // the second argument is "isStartingPlayer", this is only sent for turn based games
-      tictactoeNamespace.to(socket.userid).emit("found-user", user, true);
-      socket.to(user).emit("found-user", socket.userid, false);
+      // notify players of found user
+      player.emit("found match", socket.userid, socket.username);
+      socket.emit("found match", player.userid, player.username);
     } else {
-      // user for
-      await redisClient.sAdd("waitingPlayers:tictactoe", socket.userid);
-      socket.emit("waiting", "Searching for players");
+      // add this user to lobby & notify user to wait
+      socket.join("lobby");
+      socket.emit("waiting in lobby", "waiting");
     }
-
-    console.log(data);
   });
 
+  socket.on("test", async (ei) => {
+    const playersInLobby = await tictactoe.in("lobby").fetchSockets();
+    for (const player of playersInLobby) {
+      console.log(player.username);
+    }
+    if (playersInLobby.length === 0) console.log("empty");
+  });
   socket.on("play:friend", async (data) => {
     // create a room and add this user to it
     // emit a request event in the users username
     // const roomid = some random room id
     //socket.join(roomid)
-    //io.to(data.friend).emit("game request",{game:'tictactoe',roomid,requestee})
-
-    socket.emit("done", "done");
+    //socket.to(data.friend).emit("game request",{game:'tictactoe',roomid,requestee})
   });
 
   socket.on("next-player", (data) => {
@@ -90,18 +94,30 @@ tictactoeNamespace.on("connection", async (socket) => {
   });
 
   socket.on("disconnect", async () => {
-    await redisClient.sRem("waitingPlayers:tictactoe", socket.userid);
-    await redisClient.sRem("onlinePlayers", socket.userid);
     console.log("client disconnected", socket.userid);
   });
 });
 
-io.on("connection", (socket) => {
-  socket.emit("Welcome", "You're welcome");
-  console.log(socket.userid);
+io.on("connection", async (socket) => {
+  const userSockets = await io.in(socket.userid).fetchSockets();
+  if (userSockets.length === 0)
+    socket.broadcast.emit("user has joined", socket.userid, socket.username);
+
+  // add socket to its userid room
+  socket.join(socket.userid);
+
+  console.log(socket.username);
 
   socket.on("message", (data) => {
     console.log(data);
+  });
+
+  socket.on("disconnecting", async () => {
+    // check if all sockets with this username are disconnected
+    const userSockets = await io.in(socket.userid).fetchSockets();
+    if (userSockets.length === 1) {
+      socket.broadcast.emit("user has left", socket.userid, socket.username);
+    }
   });
 });
 
