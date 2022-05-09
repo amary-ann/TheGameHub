@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { useState } from 'react';
 import FormGroup from '../../Components/FormGroup';
 import OrRibbon from '../../Components/OrRibbon';
+import AutomaticSignUpButton from '../../Components/AutomaticSignUpButton';
 
 const SignIn = (props) => {
     const [emailOrUsername, setEmailOrUsername] = useState('');
@@ -22,10 +23,8 @@ const SignIn = (props) => {
                 <button onClick={handleSubmit} className='bg-[#4C54C8] w-full h-[62px] text-[23px] text-white rounded-[13px] font-bold'>Sign Up</button>
                 <OrRibbon />
                 <div className="flex justify-between mt-[38px] gap-5">
-
-                    <div className='w-[150px] h-[87px] rounded-[27px] automaticSignUpButton  flex items-center justify-center'>
-                        <Image src='/appleIcon.svg' width={48} height={48} />
-                    </div>
+                    <AutomaticSignUpButton iconPath={'/googleIcon.svg'} width={48} height={48} />
+                    <AutomaticSignUpButton iconPath={'/appleIcon.svg'} width={48} height={48} />
                 </div>
             </form>
         </div>
