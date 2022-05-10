@@ -7,9 +7,8 @@ const {
   SocketCookieParser,
   SocketSession,
 } = require("./Middleware/socketMiddleware");
-const { InitSocket } = require("./Controllers/socketController");
 const express = require("express");
-const { redisClient, startRedis } = require("./redis/index");
+const { startRedis } = require("./redis/index");
 
 const uniqid = require("uniqid");
 const { createServer } = require("http");
@@ -38,7 +37,8 @@ io.use(SocketCookieParser);
 io.use(requireAuth);
 
 tictactoe.on("connection", async (socket) => {
-  InitSocket(socket);
+  console.log("socket connnected", socket.userid);
+  socket.join(socket.userid);
 
   socket.on("play:random-user", async (data) => {
     // get all users in lobby
@@ -54,7 +54,9 @@ tictactoe.on("connection", async (socket) => {
 
       // add players to a new game room
       socket.join(gameRoom);
+      socket.gameRoom = gameRoom;
       player.join(gameRoom);
+      player.gameRoom = gameRoom;
 
       // notify players of found user
       player.emit("found match", socket.userid, socket.username);
@@ -66,19 +68,20 @@ tictactoe.on("connection", async (socket) => {
     }
   });
 
-  socket.on("test", async (ei) => {
-    const playersInLobby = await tictactoe.in("lobby").fetchSockets();
-    for (const player of playersInLobby) {
-      console.log(player.username);
-    }
-    if (playersInLobby.length === 0) console.log("empty");
-  });
   socket.on("play:friend", async (data) => {
-    // create a room and add this user to it
-    // emit a request event in the users username
-    // const roomid = some random room id
-    //socket.join(roomid)
-    //socket.to(data.friend).emit("game request",{game:'tictactoe',roomid,requestee})
+    //check if friend is online
+    const friendSockets = await tictactoe.in(data.userid).allSockets();
+    const friendIsOnline = friendSockets !== 0;
+    if (friendIsOnline) {
+      // send friend a game request and add this player to the new gameroom
+      const gameroom = uniqid();
+      tictactoe
+        .to(data.userid)
+        .emit("game request", socket.userid, socket.username, gameroom);
+      socket.join(gameroom);
+    } else {
+      socket.emit("friend offline", data.userid);
+    }
   });
 
   socket.on("next-player", (data) => {
@@ -99,8 +102,21 @@ tictactoe.on("connection", async (socket) => {
 });
 
 io.on("connection", async (socket) => {
-  const userSockets = await io.in(socket.userid).fetchSockets();
-  if (userSockets.length === 0)
+  // send all online users to the client
+  const users = [];
+  for (let [_, userSocket] of io.of("/").sockets) {
+    if (userSocket.username !== socket.username)
+      users.push({
+        userid: socket.userid,
+        username: socket.username,
+      });
+  }
+
+  socket.emit("users", users);
+
+  // checks if user has other connected sockets and notifies other users
+  const matchingSockets = await io.in(socket.userid).allSockets();
+  if (matchingSockets.size === 0)
     socket.broadcast.emit("user has joined", socket.userid, socket.username);
 
   // add socket to its userid room
@@ -108,14 +124,11 @@ io.on("connection", async (socket) => {
 
   console.log(socket.username);
 
-  socket.on("message", (data) => {
-    console.log(data);
-  });
-
-  socket.on("disconnecting", async () => {
+  socket.on("disconnect", async () => {
     // check if all sockets with this username are disconnected
-    const userSockets = await io.in(socket.userid).fetchSockets();
-    if (userSockets.length === 1) {
+    const matchingSockets = await io.in(socket.userid).allSockets();
+    const isDisconnected = matchingSockets.size === 0;
+    if (isDisconnected) {
       socket.broadcast.emit("user has left", socket.userid, socket.username);
     }
   });
