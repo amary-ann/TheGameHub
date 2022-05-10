@@ -1,16 +1,17 @@
 require("dotenv").config();
 const { corsConfig } = require("./Controllers/serverController");
+const cors = require("cors");
+const TestRouter = require("./Routes/TestRoutes");
 const {
   requireAuth,
   SocketCookieParser,
   SocketSession,
 } = require("./Middleware/socketMiddleware");
-
+const { InitSocket } = require("./Controllers/socketController");
 const express = require("express");
 const { redisClient, startRedis } = require("./redis/index");
-const cors = require("cors");
+
 const uniqid = require("uniqid");
-const TestRouter = require("./Routes/TestRoutes");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 
@@ -25,82 +26,98 @@ const port = process.env.PORT || 8080; // use port 8080 if environment port is n
 // Express middlewares
 app.use(express.json());
 app.use(cors(corsConfig));
-//app.use(sessionMiddleware);
 app.use("/test", TestRouter);
 
 // Socket.io middlewares
-const tictactoeNamespace = io.of("/tictactoe");
-tictactoeNamespace.use(SocketCookieParser);
-tictactoeNamespace.use(requireAuth);
-tictactoeNamespace.use(SocketSession);
+const tictactoe = io.of("/tictactoe");
+// find a way to target all namespaces
+tictactoe.use(SocketCookieParser);
+tictactoe.use(requireAuth);
+tictactoe.use(SocketSession);
 io.use(SocketCookieParser);
 io.use(requireAuth);
 
-tictactoeNamespace.on("connection", async (socket) => {
-  console.log("socket connnected", socket.userid);
-  await redisClient.sAdd("onlinePlayers", socket.userid);
+tictactoe.on("connection", async (socket) => {
+  InitSocket(socket);
 
-  socket.join(socket.userid);
-  socket.emit("Welcome", "You're welcome to the tictactoe socket");
+  socket.on("play:random-user", async (data) => {
+    // get all users in lobby
+    const playersInLobby = await tictactoe.in("lobby").fetchSockets();
 
-  socket.on("play with random user", async (data) => {
-    // check waiting queue for waiting users
-    // pair user with another waiting user
-
-    const user = await redisClient.sRandMember("waitingPlayers:tictactoe");
-
-    if (user) {
-      // emit found user
+    // check if there are users in lobby
+    if (playersInLobby.length > 0 && !playersInLobby.includes(socket)) {
       const gameRoom = uniqid("gameroom");
+      const player = playersInLobby[0]; // first player in lobby
 
-      await redisClient.sRem("waitingPlayers:tictactoe", user);
+      // remove found player from lobby
+      player.leave("lobby");
 
-      tictactoeNamespace.in(user).socketsJoin(gameRoom);
-      tictactoeNamespace.in(socket.userid).socketsJoin(gameRoom);
-      socket.emit("found user", user);
-      socket.to(user).emit("found user", socket.userid);
+      // add players to a new game room
+      socket.join(gameRoom);
+      player.join(gameRoom);
+
+      // notify players of found user
+      player.emit("found match", socket.userid, socket.username);
+      socket.emit("found match", player.userid, player.username);
     } else {
-      // user for
-      await redisClient.sAdd("waitingPlayers:tictactoe", socket.userid);
-      socket.emit("waiting", "Searching for players");
+      // add this user to lobby & notify user to wait
+      socket.join("lobby");
+      socket.emit("waiting in lobby", "waiting");
     }
-
-    console.log(data);
   });
 
-  socket.on("play with friend", async (data) => {
+  socket.on("test", async (ei) => {
+    const playersInLobby = await tictactoe.in("lobby").fetchSockets();
+    for (const player of playersInLobby) {
+      console.log(player.username);
+    }
+    if (playersInLobby.length === 0) console.log("empty");
+  });
+  socket.on("play:friend", async (data) => {
     // create a room and add this user to it
     // emit a request event in the users username
     // const roomid = some random room id
     //socket.join(roomid)
-    //io.to(data.friend).emit("game request",{game:'tictactoe',roomid,requestee})
-
-    socket.emit("done", "done");
+    //socket.to(data.friend).emit("game request",{game:'tictactoe',roomid,requestee})
   });
 
-  socket.on("next player", (data) => {
+  socket.on("next-player", (data) => {
     // emits an event to the other player
-    socket.to(socket.userid).to(data.roomid).emit("turn", { changes: "" });
+    console.log(data);
+    // socket.to(socket.userid).to(data.roomid).emit("turn", { changes: "" });
+    // socket.session.room = "something";
   });
 
-  socket.on("game over", (data) => {
+  socket.on("gameOver", (data) => {
     // ends the game
     // the game is ended if a user wins or they draw
   });
 
   socket.on("disconnect", async () => {
-    await redisClient.sRem("waitingPlayers:tictactoe", socket.userid);
-    await redisClient.sRem("onlinePlayers", socket.userid);
     console.log("client disconnected", socket.userid);
   });
 });
 
-io.on("connection", (socket) => {
-  socket.emit("Welcome", "You're welcome");
-  console.log(socket.userid);
+io.on("connection", async (socket) => {
+  const userSockets = await io.in(socket.userid).fetchSockets();
+  if (userSockets.length === 0)
+    socket.broadcast.emit("user has joined", socket.userid, socket.username);
+
+  // add socket to its userid room
+  socket.join(socket.userid);
+
+  console.log(socket.username);
 
   socket.on("message", (data) => {
     console.log(data);
+  });
+
+  socket.on("disconnecting", async () => {
+    // check if all sockets with this username are disconnected
+    const userSockets = await io.in(socket.userid).fetchSockets();
+    if (userSockets.length === 1) {
+      socket.broadcast.emit("user has left", socket.userid, socket.username);
+    }
   });
 });
 
