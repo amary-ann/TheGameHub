@@ -5,7 +5,7 @@ const CheckGamesButton = (props) => {
         <div className='flex justify-center mt-[80px] mb-[90px]'>
             <Link href='/games'>
                 <button className='px-[49px] py-[16px] bg-[#4041D5] rounded-[12px] poppinsFont font-semibold text-[20px] text-white'>
-                    Check out our games 
+                    Play Online Now
                 </button>
             </Link>
         </div>
